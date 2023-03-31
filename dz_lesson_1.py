@@ -67,8 +67,8 @@ def ping_inet(web_address):
         print(line.decode('utf-8'))
 
 
-ping_inet('yandex.ru')
-ping_inet('youtube.com')
+# ping_inet('yandex.ru')
+# ping_inet('youtube.com')
 
 
 """
@@ -81,10 +81,10 @@ words = ['сетевое программирование', 'сокет', 'де�
 
 with open('example.txt', 'w') as f_example:
     for word in words:
-        f_example.write(word)
-    print(f_example.encoding)
+        f_example.write(word +'\n')
+    file_encoding = f_example.encoding
 
-with open('example.txt', 'r', encoding='utf-8', errors='replace') as \
+with open('example.txt', 'r', encoding=file_encoding, errors='replace') as \
         f_example:
     for el_str in f_example:
         print(el_str)
