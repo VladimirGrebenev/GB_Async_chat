@@ -54,6 +54,7 @@ print(words_dec)
 """
 
 import subprocess
+import chardet
 
 
 def ping_inet(web_address):
@@ -61,7 +62,8 @@ def ping_inet(web_address):
     subproc_ping = subprocess.Popen(args, stdout=subprocess.PIPE)
 
     for line in subproc_ping.stdout:
-        line = line.decode('cp866').encode('utf-8')
+        result = chardet.detect(line)
+        line = line.decode(result['encoding']).encode('utf-8')
         print(line.decode('utf-8'))
 
 
