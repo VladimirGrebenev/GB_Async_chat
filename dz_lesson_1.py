@@ -67,8 +67,8 @@ def ping_inet(web_address):
         print(line.decode('utf-8'))
 
 
-# ping_inet('yandex.ru')
-# ping_inet('youtube.com')
+ping_inet('yandex.ru')
+ping_inet('youtube.com')
 
 
 """
