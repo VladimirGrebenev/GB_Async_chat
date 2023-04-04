@@ -7,47 +7,28 @@ import re
 def get_data(patterns, files_list):
     """
     Функция, принимает список паттернов {patterns} и список файлов
-    {files_list}. Возвращает список {main_data} пригодный для записи в cvs.
-    :param patterns: {list} список патnернов.
+    {files_list}. Возвращает список {main_data} пригодный для записи в csv.
+    :param patterns: {list} список паттернов.
     :param files_list: {list} список файлов
-    :return:
+    :return: список списков для записи в csv
     """
     seek_dicts_list = []
-    values_list = []
     main_data = []
-    for pattern in patterns:
-        seek_values = []
-        for file in files_list:
-            with open(file) as f_n:
-                seek_values.append(seek_data(f_n, pattern))
-        seek_dicts_list.append({pattern: seek_values})
 
-    keys_list = []
-    for el in seek_dicts_list:
-        for key in el.keys():
-            keys_list.append(key)
+    main_data.append(patterns)
 
-    main_data.append(keys_list)
+    for file in files_list:
+        with open(file) as f_n:
+            seek_values = []
+            for pattern in patterns:
+                seek = seek_data(f_n, pattern)
+                f_n.seek(0)
+                seek_values.append(seek)
+        seek_dicts_list.append({file: seek_values})
 
     for el in seek_dicts_list:
         for value in el.values():
-            values_list.append(value)
-
-    v1 = values_list[0]
-    v2 = values_list[1]
-    v3 = values_list[2]
-    v4 = values_list[3]
-
-    values = list(itertools.chain(v1,v2,v3,v4))
-
-    # for (a, b, c) in zip(v1, v2, v3):
-    #     n = [a, b, c]
-    #     values.append(n)
-
-    main_data.append(values)
-
-    print(values)
-    print(seek_dicts_list)
+            main_data.append(value)
 
     return main_data
 
@@ -63,12 +44,14 @@ def seek_data(text_data, pattern):
         match = re.search(pattern, string)
         if match:
             seek_result = string.rstrip().replace(" ", "").split(':')[1]
+            break
+
     return seek_result
 
 def write_to_csv(file_name, patterns, files_list):
     data_to_write = get_data(patterns, files_list)
 
-    with open(file_name, 'w', encoding='utf-8') as f_n:
+    with open(file_name, 'w', encoding='utf-8', newline='') as f_n:
         f_n_writer = csv.writer(f_n, quoting=csv.QUOTE_NONNUMERIC)
         f_n_writer.writerows(data_to_write)
 
@@ -76,7 +59,7 @@ def write_to_csv(file_name, patterns, files_list):
 my_patterns = ['Изготовитель ОС', 'Название ОС', 'Код продукта', 'Тип системы']
 my_files = ['info_1.txt', 'info_2.txt', 'info_3.txt']
 print(get_data(my_patterns, my_files))
-#
-# write_to_csv('example_data.csv', my_patterns, my_files)
+
+write_to_csv('example_data.csv', my_patterns, my_files)
 
 
