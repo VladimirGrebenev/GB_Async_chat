@@ -41,12 +41,13 @@ def seek_data(text_data, pattern):
     :return: строка {seek_result}, значение найденного ключа.
     """
     for string in text_data:
-        match = re.search(pattern, string)
+        match = re.match(pattern, string)
         if match:
-            seek_result = string.rstrip().replace(" ", "").split(':')[1]
+            seek_result = re.split(':', string)[1].strip()
             break
 
     return seek_result
+
 
 def write_to_csv(file_name, patterns, files_list):
     data_to_write = get_data(patterns, files_list)
@@ -58,8 +59,5 @@ def write_to_csv(file_name, patterns, files_list):
 
 my_patterns = ['Изготовитель ОС', 'Название ОС', 'Код продукта', 'Тип системы']
 my_files = ['info_1.txt', 'info_2.txt', 'info_3.txt']
-print(get_data(my_patterns, my_files))
 
 write_to_csv('example_data.csv', my_patterns, my_files)
-
-
