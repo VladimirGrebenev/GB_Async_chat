@@ -7,6 +7,10 @@ import time
 from common_files.settings import ACTION, PRESENCE, TIME, USER, ACCOUNT_NAME, \
     RESPONSE, ERROR, DEFAULT_IP_ADDRESS, DEFAULT_PORT
 from common_files.plugins import get_msg, send_msg
+import logging
+import log.client_log_config
+
+CLIENT_LOGGER = logging.getLogger('client_log')
 
 
 def exist_client_msg(account_name='Guest'):
@@ -24,6 +28,8 @@ def exist_client_msg(account_name='Guest'):
             ACCOUNT_NAME: account_name
         }
     }
+    CLIENT_LOGGER.debug(f'Сообщение {PRESENCE} о наличии клиента '
+                        f'{account_name} создано')
     return out_msg
 
 
@@ -33,9 +39,13 @@ def server_answer(msg):
     :param msg:
     :return:
     """
+    CLIENT_LOGGER.debug('Проверка статуса ответа сервера')
     if RESPONSE in msg:
         if msg[RESPONSE] == 200:
+            CLIENT_LOGGER.debug('Статус ответа сервера - 200 : OK')
             return '200 : OK'
+        else:
+            CLIENT_LOGGER.error(f'Статус ответа сервера - 400 : {msg[ERROR]}')
         return f'400 : {msg[ERROR]}'
     raise ValueError
 
@@ -53,9 +63,10 @@ def main():
     except IndexError:
         server_address = DEFAULT_IP_ADDRESS
         server_port = DEFAULT_PORT
+        CLIENT_LOGGER.critical(f'Установил значения адреса и порта сервера '
+                               f'по умолчанию {server_address}:{server_port}')
     except ValueError:
-        print('Второй аргумент - число, адрес порта, должен быть в диапазоне'
-              ' от 1024 до 65535.')
+        CLIENT_LOGGER.critical('адрес порта должен быть от 1024 до 65535.')
         sys.exit(1)
 
     # Активация сокета и обмен сообщениями
@@ -65,10 +76,10 @@ def main():
     send_msg(transport, msg_to_server)
     try:
         status_server_answer = server_answer(get_msg(transport))
-        print(status_server_answer)
+        CLIENT_LOGGER.info(f'ответ от сервера: {status_server_answer}')
     except (ValueError, json.JSONDecodeError):
-        print('Попытка декодировать сообщение от сервера потерпела неудачу.')
-
+        CLIENT_LOGGER.critical('Попытка декодировать сообщение от сервера '
+                               'потерпела неудачу.')
 
 if __name__ == '__main__':
     main()

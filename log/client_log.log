@@ -1,0 +1,14 @@
+2023-04-18 12:40:56,185 DEBUG client_log_config.py test debug
+2023-04-18 12:40:56,186 INFO client_log_config.py test info message
+2023-04-18 12:40:56,186 ERROR client_log_config.py test error
+2023-04-18 12:40:56,186 CRITICAL client_log_config.py test critical error
+2023-04-18 12:41:19,714 CRITICAL client.py Установил значения адреса и порта сервера по умолчанию 127.0.0.1:7777
+2023-04-18 12:41:19,715 DEBUG client.py Сообщение presence о наличии клиента Guest создано
+2023-04-18 12:41:19,715 DEBUG client.py Проверка статуса ответа сервера
+2023-04-18 12:41:19,715 DEBUG client.py Статус ответа сервера - 200 : OK
+2023-04-18 12:41:19,715 INFO client.py ответ от сервера: 200 : OK
+2023-04-19 12:45:15,985 CRITICAL client.py Установил значения адреса и порта сервера по умолчанию 127.0.0.1:7777
+2023-04-19 12:45:15,986 DEBUG client.py Сообщение presence о наличии клиента Guest создано
+2023-04-19 12:45:15,987 DEBUG client.py Проверка статуса ответа сервера
+2023-04-19 12:45:15,987 DEBUG client.py Статус ответа сервера - 200 : OK
+2023-04-19 12:45:15,987 INFO client.py ответ от сервера: 200 : OK

@@ -1,9 +1,0 @@
-cheats:
-- god
-- give ammo
-- spawn weapon_bfg
-cost:
-  give ammo: 2ˆ
-  god: 3ˆ
-  spawn weapon_bfg: 1ˆ
-doom version: 1
