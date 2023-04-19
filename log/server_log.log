@@ -1,0 +1,1 @@
+2023-04-19 12:45:15,986 INFO server.py Сообщение: {'action': 'presence', 'time': 1681897515.9867501, 'user': {'account_name': 'Guest'}}
