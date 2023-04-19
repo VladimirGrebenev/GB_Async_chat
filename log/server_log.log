@@ -1,1 +1,8 @@
-2023-04-19 12:45:15,986 INFO server.py Сообщение: {'action': 'presence', 'time': 1681897515.9867501, 'user': {'account_name': 'Guest'}}
+2023-04-19 15:31:19,363 INFO server.py Установлен DEFAULT_PORT 7777
+2023-04-19 15:31:19,363 INFO server.py Установлен DEFAULT_IP_ADDRESS 127.0.0.1
+2023-04-19 15:31:26,246 DEBUG log_decorator.py Функция send_msg из модуля plugins.py. Вызвана из функции main c аргументами (<socket.socket fd=352, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 57233), raddr=('127.0.0.1', 7777)>, {'action': 'presence', 'time': 1681907486.245823, 'user': {'account_name': 'Guest'}}), {} в модуле client.py.
+2023-04-19 15:31:26,247 DEBUG log_decorator.py Функция get_msg из модуля plugins.py. Вызвана из функции main c аргументами (<socket.socket fd=508, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 7777), raddr=('127.0.0.1', 57233)>,), {} в модуле server.py.
+2023-04-19 15:31:26,247 INFO server.py Сообщение: {'action': 'presence', 'time': 1681907486.245823, 'user': {'account_name': 'Guest'}}
+2023-04-19 15:31:26,247 DEBUG log_decorator.py Функция process_client_msg из модуля server.py. Вызвана из функции main c аргументами ({'action': 'presence', 'time': 1681907486.245823, 'user': {'account_name': 'Guest'}},), {} в модуле server.py.
+2023-04-19 15:31:26,247 DEBUG log_decorator.py Функция send_msg из модуля plugins.py. Вызвана из функции main c аргументами (<socket.socket fd=508, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 7777), raddr=('127.0.0.1', 57233)>, {'response': 200}), {} в модуле server.py.
+2023-04-19 15:31:26,247 DEBUG log_decorator.py Функция get_msg из модуля plugins.py. Вызвана из функции main c аргументами (<socket.socket fd=352, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 57233), raddr=('127.0.0.1', 7777)>,), {} в модуле client.py.

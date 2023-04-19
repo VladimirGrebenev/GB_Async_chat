@@ -9,10 +9,11 @@ from common_files.settings import ACTION, ACCOUNT_NAME, RESPONSE, \
 from common_files.plugins import get_msg, send_msg
 import logging
 import log.server_log_config
+from log.log_decorator import log
 
 SERVER_LOGGER = logging.getLogger('server_log')
 
-
+@log
 def process_client_msg(msg):
     """
     Обработка сообщений от клиента. На вход получаем сообщение от клиента -

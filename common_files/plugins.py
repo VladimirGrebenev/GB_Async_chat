@@ -2,8 +2,9 @@
 
 import json
 from .settings import MAX_PACKAGE_LENGTH, ENCODING
+from log.log_decorator import log
 
-
+@log
 def get_msg(client):
     """
     Плагин, принимает сообщение в байтах и декодирует его в словарь.
@@ -21,7 +22,7 @@ def get_msg(client):
         raise ValueError
     raise ValueError
 
-
+@log
 def send_msg(sock, message):
     """
     Плагин принимает сообщение на вход в виде словаря, кодирует и
