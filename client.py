@@ -9,10 +9,11 @@ from common_files.settings import ACTION, PRESENCE, TIME, USER, ACCOUNT_NAME, \
 from common_files.plugins import get_msg, send_msg
 import logging
 import log.client_log_config
+from log.log_decorator import log
 
 CLIENT_LOGGER = logging.getLogger('client_log')
 
-
+@log
 def exist_client_msg(account_name='Guest'):
     """
     Функция создаёт сообщение в нужном формате о наличии клиента
@@ -32,7 +33,7 @@ def exist_client_msg(account_name='Guest'):
                         f'{account_name} создано')
     return out_msg
 
-
+@log
 def server_answer(msg):
     """
     Проверка статуса ответа сервера
