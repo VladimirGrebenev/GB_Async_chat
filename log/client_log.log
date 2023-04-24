@@ -1,0 +1,19 @@
+2023-04-24 15:29:26,667 CRITICAL client.py Установил значения адреса и порта сервера по умолчанию 127.0.0.1:7777
+2023-04-24 15:29:32,859 CRITICAL client.py Установил значения адреса и порта сервера по умолчанию 127.0.0.1:7777
+2023-04-24 15:29:39,416 DEBUG client.py msg_dict: {'action': 'message', 'time': 1682339379.4162946, 'account_name': 'Guest', 'mess_text': 'привет от клиента 1'}
+2023-04-24 15:29:39,416 DEBUG log_decorator.py Функция write_msg из модуля /home/veneberg/Desktop/GB_Async_chat/client.py. Вызвана из функции main c аргументами (<socket.socket fd=5, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 33762), raddr=('127.0.0.1', 7777)>,), {} в модуле /home/veneberg/Desktop/GB_Async_chat/client.py.
+2023-04-24 15:29:39,871 INFO client.py Сообщение от Guest:
+привет от клиента 1
+2023-04-24 15:29:39,871 DEBUG log_decorator.py Функция msg_from_server из модуля /home/veneberg/Desktop/GB_Async_chat/client.py. Вызвана из функции main c аргументами ({'action': 'message', 'sender': 'Guest', 'time': 1682339379.870768, 'mess_text': 'привет от клиента 1'},), {} в модуле /home/veneberg/Desktop/GB_Async_chat/client.py.
+2023-04-24 15:29:46,176 DEBUG client.py msg_dict: {'action': 'message', 'time': 1682339386.176263, 'account_name': 'Guest', 'mess_text': 'привет от клиента 2'}
+2023-04-24 15:29:46,176 DEBUG log_decorator.py Функция write_msg из модуля /home/veneberg/Desktop/GB_Async_chat/client.py. Вызвана из функции main c аргументами (<socket.socket fd=5, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 43074), raddr=('127.0.0.1', 7777)>,), {} в модуле /home/veneberg/Desktop/GB_Async_chat/client.py.
+2023-04-24 15:29:46,177 INFO client.py Сообщение от Guest:
+привет от клиента 1
+2023-04-24 15:29:46,177 DEBUG log_decorator.py Функция msg_from_server из модуля /home/veneberg/Desktop/GB_Async_chat/client.py. Вызвана из функции main c аргументами ({'action': 'message', 'sender': 'Guest', 'time': 1682339379.870768, 'mess_text': 'привет от клиента 1'},), {} в модуле /home/veneberg/Desktop/GB_Async_chat/client.py.
+2023-04-24 15:29:56,488 DEBUG client.py msg_dict: {'action': 'message', 'time': 1682339396.4886928, 'account_name': 'Guest', 'mess_text': 'как дела, клиент 2?'}
+2023-04-24 15:29:56,489 DEBUG log_decorator.py Функция write_msg из модуля /home/veneberg/Desktop/GB_Async_chat/client.py. Вызвана из функции main c аргументами (<socket.socket fd=5, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 33762), raddr=('127.0.0.1', 7777)>,), {} в модуле /home/veneberg/Desktop/GB_Async_chat/client.py.
+2023-04-24 15:29:56,489 INFO client.py Сообщение от Guest:
+привет от клиента 2
+2023-04-24 15:29:56,489 DEBUG log_decorator.py Функция msg_from_server из модуля /home/veneberg/Desktop/GB_Async_chat/client.py. Вызвана из функции main c аргументами ({'action': 'message', 'sender': 'Guest', 'time': 1682339386.8862255, 'mess_text': 'привет от клиента 2'},), {} в модуле /home/veneberg/Desktop/GB_Async_chat/client.py.
+2023-04-24 15:30:25,289 DEBUG client.py msg_dict: {'action': 'message', 'time': 1682339425.2891076, 'account_name': 'Guest', 'mess_text': 'хорблин, но я не вижу ответа , до того как я отправлю вопрос'}
+2023-04-24 15:30:25,289 DEBUG log_decorator.py Функция write_msg из модуля /home/veneberg/Desktop/GB_Async_chat/client.py. Вызвана из функции main c аргументами (<socket.socket fd=5, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 43074), raddr=('127.0.0.1', 7777)>,), {} в модуле /home/veneberg/Desktop/GB_Async_chat/client.py.
