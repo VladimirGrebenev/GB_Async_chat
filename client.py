@@ -117,14 +117,14 @@ def main():
                                'потерпела неудачу.')
     else:
         while True:
-            # if transport:
-            #     try:
-            send_msg(transport, write_msg(transport))
-            msg_from_server(get_msg(transport))
-                # except:
-                #     CLIENT_LOGGER.error(f'Потеряна связь {server_address}'
-                #                         f' {server_port} ')
-                #     sys.exit(1)
+            if transport:
+                try:
+                    send_msg(transport, write_msg(transport))
+                    msg_from_server(get_msg(transport))
+                except:
+                    CLIENT_LOGGER.error(f'Потеряна связь {server_address}'
+                                        f' {server_port} ')
+                    sys.exit(1)
 
 
 if __name__ == '__main__':
