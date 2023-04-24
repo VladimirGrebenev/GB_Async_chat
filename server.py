@@ -94,7 +94,7 @@ def main():
     transport.bind((listen_address, listen_port))
 
     # Таймаут для операций с сокетом
-    transport.settimeout(0.2)
+    transport.settimeout(1)
 
     # Активация прослушивания порта
     transport.listen(MAX_CONNECTIONS)
@@ -108,37 +108,37 @@ def main():
         else:
             SERVER_LOGGER.info(f'Связь установлена: {client_address}')
             clients.append(client)
-            # {'action': 'presence', 'time': 1573760672.167031, 'user': {
-            # 'account_name': 'Guest'}}
-            read_list = []
-            write_list = []
-            try:
-                if clients:
-                    read_list, write_list, e = select.select(clients,
-                                                             clients, [])
-            except OSError as e:
-                pass
 
-            if read_list:
-                for client in read_list:
-                    try:
-                        process_client_msg(get_msg(client), messages, client)
-                    except:
-                        clients.remove(client)
+        read_list = []
+        write_list = []
 
-            if messages and write_list:
-                msg = {
-                    ACTION: MESSAGE,
-                    SENDER: messages[0][0],
-                    TIME: time.time(),
-                    MESSAGE_TEXT: messages[0][1]
-                }
-                del messages[0]
-                for client in write_list:
-                    try:
-                        send_msg(client, msg)
-                    except:
-                        clients.remove(client)
+        try:
+            if clients:
+                read_list, write_list, e = select.select(clients,
+                                                         clients, [], 0)
+        except OSError as e:
+            pass
+
+        if read_list:
+            for client in read_list:
+                try:
+                    process_client_msg(get_msg(client), messages, client)
+                except:
+                    clients.remove(client)
+
+        if messages and write_list:
+            msg = {
+                ACTION: MESSAGE,
+                SENDER: messages[0][0],
+                TIME: time.time(),
+                MESSAGE_TEXT: messages[0][1]
+            }
+            del messages[0]
+            for client in write_list:
+                try:
+                    send_msg(client, msg)
+                except Exception:
+                    clients.remove(client)
 
 
 if __name__ == '__main__':

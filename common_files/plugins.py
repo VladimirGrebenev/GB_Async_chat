@@ -1,8 +1,10 @@
 """Плагины"""
 
 import json
+import sys
 from .settings import MAX_PACKAGE_LENGTH, ENCODING
 from log.log_decorator import log
+sys.path.append('../')
 
 @log
 def get_msg(client):
@@ -31,7 +33,8 @@ def send_msg(sock, message):
     :param message:
     :return:
     """
-
+    if not isinstance(message, dict):
+        raise ValueError
     js_message = json.dumps(message)
     encoded_message = js_message.encode(ENCODING)
     sock.send(encoded_message)

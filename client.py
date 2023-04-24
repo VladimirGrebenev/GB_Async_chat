@@ -18,12 +18,12 @@ CLIENT_LOGGER = logging.getLogger('client_log')
 @log
 def msg_from_server(msg):
     """Функция воспроизведения всех сообщений с сервера"""
-    if ACTION in msg and msg[ACTION] == MESSAGE and \
-            SENDER in msg and MESSAGE_TEXT in msg:
-        print(f'Сообщение от {msg[SENDER]}:\n{msg[MESSAGE_TEXT]}')
-        CLIENT_LOGGER.info(f'Сообщение от {msg[SENDER]}:\n{msg[MESSAGE_TEXT]}')
-    else:
-        CLIENT_LOGGER.error(f'Ошибка сообщения сервера: {msg}')
+    # if ACTION in msg and msg[ACTION] == MESSAGE and \
+    #         SENDER in msg and MESSAGE_TEXT in msg:
+    print(f'Сообщение от {msg[SENDER]}:\n{msg[MESSAGE_TEXT]}')
+    CLIENT_LOGGER.info(f'Сообщение от {msg[SENDER]}:\n{msg[MESSAGE_TEXT]}')
+    # else:
+    #     CLIENT_LOGGER.error(f'Ошибка сообщения сервера: {msg}')
 
 @log
 def write_msg(sock, account_name='Guest'):
@@ -36,13 +36,14 @@ def write_msg(sock, account_name='Guest'):
         CLIENT_LOGGER.info('Клиент вышел')
         print('Вы вышли')
         sys.exit(0)
-    msg_dict = {
-        ACTION: MESSAGE,
-        TIME: time.time(),
-        ACCOUNT_NAME: account_name,
-        MESSAGE_TEXT: msg
-    }
-    CLIENT_LOGGER.debug(f' msg_dict: {msg_dict}')
+    else:
+        msg_dict = {
+            ACTION: MESSAGE,
+            TIME: time.time(),
+            ACCOUNT_NAME: account_name,
+            MESSAGE_TEXT: msg
+        }
+        CLIENT_LOGGER.debug(f'msg_dict: {msg_dict}')
     return msg_dict
 
 
@@ -54,8 +55,7 @@ def exist_client_msg(account_name='Guest'):
     :param account_name:
     :return:
     """
-    # {'action': 'presence', 'time': 1573760672.167031, 'user': {
-    # 'account_name': 'Guest'}}
+
     out_msg = {
         ACTION: PRESENCE,
         TIME: time.time(),
@@ -88,8 +88,6 @@ def server_answer(msg):
 def main():
     """Запуск клиента"""
 
-    # Установка аргументов из командной строки
-    # client.py 192.168.1.2 8079
     try:
         server_address = sys.argv[1]
         server_port = int(sys.argv[2])
@@ -105,26 +103,18 @@ def main():
         sys.exit(1)
 
     # Активация сокета и обмен сообщениями
-    try:
-        transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        transport.connect((server_address, server_port))
-        send_msg(transport, exist_client_msg())
-        status_server_answer = server_answer(get_msg(transport))
-        CLIENT_LOGGER.info(f'ответ от сервера: {status_server_answer}')
-        print(f'Установлено соединение с сервером.')
-    except (ValueError, json.JSONDecodeError):
-        CLIENT_LOGGER.critical('Попытка декодировать сообщение от сервера '
-                               'потерпела неудачу.')
-    else:
-        while True:
-            if transport:
-                try:
-                    send_msg(transport, write_msg(transport))
-                    msg_from_server(get_msg(transport))
-                except:
-                    CLIENT_LOGGER.error(f'Потеряна связь {server_address}'
-                                        f' {server_port} ')
-                    sys.exit(1)
+
+    transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    transport.connect((server_address, server_port))
+    while True:
+        # try:
+        send_msg(transport, write_msg(transport))
+        msg_from_server(get_msg(transport))
+
+        # except Exception:
+        #     CLIENT_LOGGER.error(f'Потеряна связь {server_address}'
+        #                         f' {server_port} ')
+        #     sys.exit(1)
 
 
 if __name__ == '__main__':
