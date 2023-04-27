@@ -1,4 +1,6 @@
-"""Настройки"""
+"""Настройки чата"""
+
+import logging
 
 # Порт по умолчанию для сетевого взаимодействия
 DEFAULT_PORT = 7777
@@ -10,17 +12,29 @@ MAX_CONNECTIONS = 5
 MAX_PACKAGE_LENGTH = 1024
 # Кодировка сообщений
 ENCODING = 'utf-8'
+# Уровень логирования
+LOG_LEVEL = logging.DEBUG
 
 # Протокол JIM основные ключи:
 ACTION = 'action'
 TIME = 'time'
 USER = 'user'
-ACCOUNT_NAME = 'account_name'
-SENDER = 'sender'
+USER_NAME = 'user_name'
+SENDER = 'from'
+RECIPIENT = 'to'
 
 # Прочие ключи, используемые в протоколе
 PRESENCE = 'presence'
 RESPONSE = 'response'
-ERROR = 'Bad request'
-MESSAGE = 'message'
-MESSAGE_TEXT = 'mess_text'
+ERROR = 'error'
+MSG = 'msg'
+MSG_TEXT = 'msg_text'
+EXIT = 'exit'
+
+# ответ сервера 200
+RESPONSE_200 = {RESPONSE: 200}
+# ответ сервера 400
+RESPONSE_400 = {
+    RESPONSE: 400,
+    ERROR: None
+}

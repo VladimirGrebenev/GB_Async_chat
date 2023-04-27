@@ -2,143 +2,182 @@
 
 import socket
 import sys
-import json
-import time
-
+import argparse
 import select
-
-from common_files.settings import ACTION, ACCOUNT_NAME, RESPONSE, \
-    MAX_CONNECTIONS, PRESENCE, TIME, USER, ERROR, DEFAULT_PORT, \
-    DEFAULT_IP_ADDRESS, MESSAGE, MESSAGE_TEXT, SENDER
+from common_files.settings import DEFAULT_PORT, MAX_CONNECTIONS, ACTION, TIME,\
+    USER, USER_NAME, SENDER, PRESENCE, ERROR, MSG, MSG_TEXT, \
+    RESPONSE_400, RECIPIENT, RESPONSE_200, EXIT
 from common_files.plugins import get_msg, send_msg
 import logging
 import log.server_log_config
 from log.log_decorator import log
 
+# Активация настроек логирования для сервера.
 SERVER_LOGGER = logging.getLogger('server_log')
 
 
 @log
-def process_client_msg(msg, msg_list, client):
+def make_client_msg(msg, msg_list, client, clients, users_names):
     """
     Обработка сообщений от клиента. На вход получаем сообщение от клиента -
     словарь. Проверяем его корректность и возвращаем ответ клиенту - словарь.
+    """
+
+    SERVER_LOGGER.debug(f'Разбор сообщения: {msg} ')
+
+    if ACTION in msg and msg[ACTION] == PRESENCE and TIME in msg \
+            and USER in msg:
+        # Если пользователя нет в списке, то добавляем его. Если такой есть,
+        # то говорим, что имя занято и завершаем соединение.
+        if msg[USER][USER_NAME] not in users_names.keys():
+            users_names[msg[USER][USER_NAME]] = client
+            send_msg(client, RESPONSE_200)
+        else:
+            response = RESPONSE_400
+            response[ERROR] = 'Такой юзер уже существует'
+            send_msg(client, response)
+            clients.remove(client)
+            client.close()
+        return
+    # Если сообщение имеет все параметры,
+    # то добавляем в список сообщений на доставку.
+    elif ACTION in msg and msg[ACTION] == MSG and \
+            RECIPIENT in msg and TIME in msg \
+            and SENDER in msg and MSG_TEXT in msg:
+        msg_list.append(msg)
+        return
+    # Если клиент выбрал команду exit
+    elif ACTION in msg and msg[ACTION] == EXIT and USER_NAME in msg:
+        clients.remove(users_names[msg[USER_NAME]])
+        users_names[msg[USER_NAME]].close()
+        del users_names[msg[USER_NAME]]
+        return
+    # В остальных случаях, констатируем некорректный запрос
+    else:
+        response = RESPONSE_400
+        response[ERROR] = 'Получен некорректный запрос к серверу.'
+        send_msg(client, response)
+        return
+
+
+@log
+def make_msg(msg, users_names, listen_socks):
+    """
+    Функция для отправки сообщения конкретному клиенту по имени.
+    На вход получает сообщение, словарь с зарегистрированными именами
+    пользователей,и сокеты.
     :param msg:
-    :param msg_list:
-    :param client:
+    :param users_names:
+    :param listen_socks:
     :return:
     """
-    if ACTION in msg and msg[ACTION] == PRESENCE and TIME in msg \
-            and USER in msg and msg[USER][ACCOUNT_NAME] == 'Guest':
-        send_msg(client, {RESPONSE: 200})
-        return
-    elif ACTION in msg and msg[ACTION] == MESSAGE and TIME in msg and \
-            MESSAGE_TEXT in msg:
-        msg_list.append((msg[ACCOUNT_NAME], msg[MESSAGE_TEXT]))
-        return
+    if msg[RECIPIENT] in users_names and users_names[msg[RECIPIENT]]\
+            in listen_socks:
+        send_msg(users_names[msg[RECIPIENT]], msg)
+        SERVER_LOGGER.info(f'Cообщение отправлено клиенту {msg[RECIPIENT]} '
+                    f'от клиента {msg[SENDER]}.')
+    elif msg[RECIPIENT] in users_names and users_names[msg[RECIPIENT]]\
+            not in listen_socks:
+        raise ConnectionError
     else:
-        send_msg(client, {RESPONSE: 400, ERROR: 'Bad Request'})
-        return
+        SERVER_LOGGER.error(
+            f'Клиент {msg[RECIPIENT]} не существует на сервере, '
+            f'сообщение не доставлено')
+
+
+@log
+def analyze_args():
+    """Анализатор аргументов при запуске в коммандной строке"""
+    analyzer = argparse.ArgumentParser()
+    analyzer.add_argument('-p', default=DEFAULT_PORT, type=int, nargs='?')
+    analyzer.add_argument('-a', default='', nargs='?')
+    namespace = analyzer.parse_args(sys.argv[1:])
+    listen_address = namespace.a
+    listen_port = namespace.p
+
+    # проверяем корректность полученного номера порта.
+    if not 1023 < listen_port < 65536:
+        SERVER_LOGGER.critical(
+            f'Некорректный номер порта {listen_port}. '
+            f'Номер порта должен быть с 1024 по 65535.')
+        sys.exit(1)
+
+    return listen_address, listen_port
 
 
 def main():
     """
-    Запуск сервера. Установка аргументов из командной строки.
-    Пример: server.py -p 8079 -a 192.168.1.2
-    :return:
+    Устанавливаем паремтры для сервера из командной строки, если запуск
+     без параметров, то устанавливаем параметры по умолчанию.
     """
+    listen_address, listen_port = analyze_args()
 
-    # Установка порта для сетевого взаимодействия
-    try:
-        if '-p' in sys.argv:
-            listen_port = int(sys.argv[sys.argv.index('-p') + 1])
-            SERVER_LOGGER.info(f'Установлен порт {listen_port}')
-        else:
-            listen_port = DEFAULT_PORT
-            SERVER_LOGGER.info(f'Установлен DEFAULT_PORT {DEFAULT_PORT}')
-        if listen_port < 1024 or listen_port > 65535:
-            raise ValueError
-    except IndexError:
-        SERVER_LOGGER.critical(f'Параметр -\'p\' необходимо указать номер '
-                               'порта. Пример: server.py -p 8079 -a '
-                               '192.168.1.2')
-        sys.exit(1)
-    except ValueError:
-        SERVER_LOGGER.critical(f'Второй аргумент - число, адрес порта, '
-                               'должен быть в диапазоне от 1024 до 65535. '
-                               'Пример: server.py -p 8079 -a 192.168.1.2')
-        sys.exit(1)
-
-    # Установка IP адреса для подключения клиента
-    try:
-        if '-a' in sys.argv:
-            listen_address = sys.argv[sys.argv.index('-a') + 1]
-            SERVER_LOGGER.info(f'Установлен IP адрес {listen_address}')
-        else:
-            listen_address = DEFAULT_IP_ADDRESS
-            SERVER_LOGGER.info(
-                f'Установлен DEFAULT_IP_ADDRESS {DEFAULT_IP_ADDRESS}')
-
-    except IndexError:
-        SERVER_LOGGER.critical(f'После параметра \'a\'- необходимо указать '
-                               f'адрес, который будет слушать сервер. '
-                               f'Пример: server.py -p 8079 -a 192.168.1.2')
-        sys.exit(1)
-
-    # список клиентов и список сообщений
-    clients = []
-    messages = []
-
-    # Активация сокета
+    SERVER_LOGGER.info(
+        f'Запущен сервер, порт для подключений: {listen_port}, '
+        f'адрес для подключения: {listen_address}. '
+        f'Если адрес не указан, принимаются соединения с любых адресов.')
+    # Подготовка сокета
     transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     transport.bind((listen_address, listen_port))
+    transport.settimeout(0.5)
 
-    # Таймаут для операций с сокетом
-    transport.settimeout(1)
+    # список клиентов и список сообщений для отправки
+    clients = []
+    msgs = []
 
-    # Активация прослушивания порта
+    # Имена пользователей.
+    users_names = dict()
+
+    # Прослушиваем порт
     transport.listen(MAX_CONNECTIONS)
-
+    # Главная петля сервера
     while True:
+        # Ожидаем подключения за отведённый таймаут.
         try:
-            # Проверка подключений
             client, client_address = transport.accept()
-        except OSError as e:
-            pass  # timeout вышел
+        except OSError:
+            pass
         else:
-            SERVER_LOGGER.info(f'Связь установлена: {client_address}')
+            SERVER_LOGGER.info(f'Соединение установлено '
+                               f'с клиентом {client_address}')
+            # добавляем клиента в список
             clients.append(client)
 
-        read_list = []
-        write_list = []
-
+        to_receive_lst = []
+        to_send_lst = []
+        err_lst = []
+        # Проверка на наличие клиентов в ожидании
         try:
             if clients:
-                read_list, write_list, e = select.select(clients,
-                                                         clients, [], 0)
-        except OSError as e:
+                to_receive_lst, to_send_lst, err_lst = select.select(clients,
+                                                                     clients,
+                                                                     [], 0)
+        except OSError:
             pass
 
-        if read_list:
-            for client in read_list:
+        # получаем сообщения и если ловим исключение, то клиент исключается
+        # из списка.
+        if to_receive_lst:
+            for client_with_msg in to_receive_lst:
                 try:
-                    process_client_msg(get_msg(client), messages, client)
-                except:
-                    clients.remove(client)
-
-        if messages and write_list:
-            msg = {
-                ACTION: MESSAGE,
-                SENDER: messages[0][0],
-                TIME: time.time(),
-                MESSAGE_TEXT: messages[0][1]
-            }
-            del messages[0]
-            for client in write_list:
-                try:
-                    send_msg(client, msg)
+                    make_client_msg(get_msg(client_with_msg), msgs,
+                                    client_with_msg, clients, users_names)
                 except Exception:
-                    clients.remove(client)
+                    SERVER_LOGGER.info(f'Клиент '
+                                       f'{client_with_msg.getpeername()} '
+                                f'отключился.')
+                    clients.remove(client_with_msg)
+
+        # Обработка сообщений.
+        for i in msgs:
+            try:
+                make_msg(i, users_names, to_send_lst)
+            except Exception:
+                SERVER_LOGGER.info(f'Связь с клиентом {i[RECIPIENT]}'
+                                   f' потеряна.')
+                clients.remove(users_names[i[RECIPIENT]])
+                del users_names[i[RECIPIENT]]
+        msgs.clear()
 
 
 if __name__ == '__main__':

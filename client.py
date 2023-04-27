@@ -4,117 +4,227 @@ import sys
 import json
 import socket
 import time
-from common_files.settings import ACTION, ACCOUNT_NAME, RESPONSE, \
-    MAX_CONNECTIONS, PRESENCE, TIME, USER, ERROR, DEFAULT_PORT, \
-    DEFAULT_IP_ADDRESS, MESSAGE, MESSAGE_TEXT, SENDER
-from common_files.plugins import get_msg, send_msg
+import argparse
 import logging
+import threading
 import log.client_log_config
+from common_files.settings import DEFAULT_PORT, DEFAULT_IP_ADDRESS, ACTION, \
+    TIME, USER, USER_NAME, SENDER, PRESENCE, RESPONSE, \
+    ERROR, MSG, MSG_TEXT, RECIPIENT, EXIT
+from common_files.plugins import get_msg, send_msg
+from common_files.exceptions import WrongDataRecivedError, \
+    RequiredFieldAbsent, ServerError
 from log.log_decorator import log
 
-CLIENT_LOGGER = logging.getLogger('client_log')
+# Инициализация клиентского логера
+CLIENT_LOGGER = logging.getLogger('client')
 
 
 @log
-def msg_from_server(msg):
-    """Функция воспроизведения всех сообщений с сервера"""
-    # if ACTION in msg and msg[ACTION] == MESSAGE and \
-    #         SENDER in msg and MESSAGE_TEXT in msg:
-    print(f'Сообщение от {msg[SENDER]}:\n{msg[MESSAGE_TEXT]}')
-    CLIENT_LOGGER.info(f'Сообщение от {msg[SENDER]}:\n{msg[MESSAGE_TEXT]}')
-    # else:
-    #     CLIENT_LOGGER.error(f'Ошибка сообщения сервера: {msg}')
+def make_exit_msg(user_name):
+    """Для создания сообщения о выходе"""
+    return {
+        ACTION: EXIT,
+        TIME: time.time(),
+        user_name: user_name
+    }
+
 
 @log
-def write_msg(sock, account_name='Guest'):
-    """Функция ввода текста пользователя.
-       Если ввести 'exit', то клиент отключится.
+def msg_from_server(sock, my_username):
+    """Для обработки сообщений с сервера"""
+    while True:
+        try:
+            msg = get_msg(sock)
+            if ACTION in msg and msg[ACTION] == MSG and \
+                    SENDER in msg and RECIPIENT in msg \
+                    and MSG_TEXT in msg and \
+                    msg[RECIPIENT] == my_username:
+                print(f'\nОт пользователя {msg[SENDER]} получено'
+                      f' сообщение:'
+                      f'\n{msg[MSG_TEXT]}')
+                CLIENT_LOGGER.info(f'От клиента {msg[SENDER]} сообщение:'
+                                   f'\n{msg[MSG_TEXT]}')
+            else:
+                CLIENT_LOGGER.error(f'Некорректное сообщение с сервера: {msg}')
+        except WrongDataRecivedError:
+            CLIENT_LOGGER.error(f'Декодировать сообщение не удалось.')
+        except (OSError, ConnectionError, ConnectionAbortedError,
+                ConnectionResetError, json.JSONDecodeError):
+            CLIENT_LOGGER.critical(f'Соединение с сервером потеряно.')
+            break
+
+
+@log
+def make_msg(sock, user_name='Guest'):
     """
-    msg = input('Ваше сообщение (чтобы выйти - exit): ')
-    if msg == 'exit':
-        sock.close()
-        CLIENT_LOGGER.info('Клиент вышел')
-        print('Вы вышли')
-        sys.exit(0)
-    else:
-        msg_dict = {
-            ACTION: MESSAGE,
-            TIME: time.time(),
-            ACCOUNT_NAME: account_name,
-            MESSAGE_TEXT: msg
-        }
-        CLIENT_LOGGER.debug(f'msg_dict: {msg_dict}')
-    return msg_dict
-
-
-
-@log
-def exist_client_msg(account_name='Guest'):
-    """
-    Функция создаёт сообщение в нужном формате о наличии клиента
-    :param account_name:
+    Функция для формирования сообщения для отправки на сервер
+    :param sock:
+    :param user_name:
     :return:
     """
+    to_recipient = input('Введите имя реципиента: ')
+    msg = input('Введите сообщение: ')
+    msg_dict = {
+        ACTION: MSG,
+        SENDER: user_name,
+        RECIPIENT: to_recipient,
+        TIME: time.time(),
+        MSG_TEXT: msg
+    }
+    CLIENT_LOGGER.debug(f'Словарь сообщения: {msg_dict}')
+    try:
+        send_msg(sock, msg_dict)
+        CLIENT_LOGGER.info(f'Ушло сообщение для реципиента {to_recipient}')
+    except:
+        CLIENT_LOGGER.critical('Соединение с сервером потеряно.')
+        sys.exit(1)
 
-    out_msg = {
+
+@log
+def pip_boy_3000(sock, user_name):
+    """Функция для отправки команд пользователем"""
+    help_me()
+    while True:
+        command = input('Введите команду: ')
+        if command == 'msg':
+            make_msg(sock, user_name)
+        elif command == 'help':
+            help_me()
+        elif command == 'exit':
+            send_msg(sock, make_exit_msg(user_name))
+            print('Конец связи. Связи конец.')
+            CLIENT_LOGGER.info('Пользователь завершил сеанс связи.')
+            # Нужна задержка для того, чтобы ушло сообщение о выходе
+            time.sleep(0.5)
+            break
+        else:
+            print('Не понял команду, попробуй ещё раз или help'
+                  ' - чтобы посмотреть команды.')
+
+
+def help_me():
+    """Функция помощь с командами """
+    print('Команды для ввода:')
+    print('msg - отправить сообщение')
+    print('help - помощь')
+    print('exit - закончить сеанс связи')
+
+
+@log
+def make_exist(user_name):
+    """Функция проверяет присутствие клиента"""
+    out = {
         ACTION: PRESENCE,
         TIME: time.time(),
         USER: {
-            ACCOUNT_NAME: account_name
+            USER_NAME: user_name
         }
     }
-    CLIENT_LOGGER.debug(f'Сообщение {PRESENCE} о наличии клиента '
-                        f'{account_name} создано')
-    return out_msg
+    CLIENT_LOGGER.debug(f'Создано {PRESENCE} для пользователя {user_name}')
+    return out
+
 
 @log
-def server_answer(msg):
+def make_resp_server(msg):
     """
-    Проверка статуса ответа сервера
+    Функция анализа ответа сервера на сообщение о присутствии клиента
     :param msg:
     :return:
     """
-    CLIENT_LOGGER.debug('Проверка статуса ответа сервера')
+    CLIENT_LOGGER.debug(f'Получено сообщение сервером: {msg}')
     if RESPONSE in msg:
         if msg[RESPONSE] == 200:
-            CLIENT_LOGGER.debug('Статус ответа сервера - 200 : OK')
             return '200 : OK'
-        else:
-            CLIENT_LOGGER.error(f'Статус ответа сервера - 400 : {msg[ERROR]}')
-        return f'400 : {msg[ERROR]}'
-    raise ValueError
+        elif msg[RESPONSE] == 400:
+            raise ServerError(f'400 : {msg[ERROR]}')
+    raise RequiredFieldAbsent(RESPONSE)
+
+
+@log
+def analyze_args():
+    """Анализатор аргументов при запуске клиента в коммандной строке"""
+    analyzer = argparse.ArgumentParser()
+    analyzer.add_argument('addr', default=DEFAULT_IP_ADDRESS, nargs='?')
+    analyzer.add_argument('port', default=DEFAULT_PORT, type=int, nargs='?')
+    analyzer.add_argument('-n', '--name', default=None, nargs='?')
+    namespace = analyzer.parse_args(sys.argv[1:])
+    server_address = namespace.addr
+    server_port = namespace.port
+    client_name = namespace.name
+
+    # проверяем корректность полученного номера порта
+    if not 1023 < server_port < 65536:
+        CLIENT_LOGGER.critical(
+            f'Некорректный номер порта: {server_port}. '
+            f'Номер порта должен быть с 1024 по 65535.')
+        sys.exit(1)
+
+    return server_address, server_port, client_name
 
 
 def main():
     """Запуск клиента"""
+    print('Клиентский модуль запущен.')
 
+    # Загрузка параметров коммандной строки
+    server_address, server_port, client_name = analyze_args()
+
+    # Запрос имени пользователя
+    if not client_name:
+        client_name = input('Введите имя пользователя: ')
+
+    CLIENT_LOGGER.info(
+        f'Клиент запущен с парамертами: адрес сервера: {server_address}, '
+        f'порт: {server_port}, имя пользователя: {client_name}')
+
+    # Активация сокета
     try:
-        server_address = sys.argv[1]
-        server_port = int(sys.argv[2])
-        if server_port < 1024 or server_port > 65535:
-            raise ValueError
-    except IndexError:
-        server_address = DEFAULT_IP_ADDRESS
-        server_port = DEFAULT_PORT
-        CLIENT_LOGGER.critical(f'Установил значения адреса и порта сервера '
-                               f'по умолчанию {server_address}:{server_port}')
-    except ValueError:
-        CLIENT_LOGGER.critical('адрес порта должен быть от 1024 до 65535.')
+        transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        transport.connect((server_address, server_port))
+        send_msg(transport, make_exist(client_name))
+        answer = make_resp_server(get_msg(transport))
+        CLIENT_LOGGER.info(
+            f'Соединение с сервером установлено, ответ: {answer}')
+        print(f'Соединение установлено.')
+    except json.JSONDecodeError:
+        CLIENT_LOGGER.error('Декодировать Json не удалось.')
         sys.exit(1)
+    except ServerError as error:
+        CLIENT_LOGGER.error(
+            f'Сервер вернул ошибку: {error.text}')
+        sys.exit(1)
+    except RequiredFieldAbsent as missing_error:
+        CLIENT_LOGGER.error(
+            f'В ответе сервера нет поля {missing_error.missing_field}')
+        sys.exit(1)
+    except (ConnectionRefusedError, ConnectionError):
+        CLIENT_LOGGER.critical(
+            f'Не могу подключиться к серверу {server_address}:{server_port}, '
+            f'сервер отверг запрос на подключение.')
+        sys.exit(1)
+    else:
+        # Соединение с сервером установлено, принимаем сообщения
+        receiver = threading.Thread(target=msg_from_server,
+                                    args=(transport, client_name))
+        receiver.daemon = True
+        receiver.start()
 
-    # Активация сокета и обмен сообщениями
+        # Отправка сообщений через команды.
+        user_pip_boy = threading.Thread(target=pip_boy_3000,
+                                          args=(transport, client_name))
+        user_pip_boy.daemon = True
+        user_pip_boy.start()
+        CLIENT_LOGGER.debug('Запущены демонические потоки')
 
-    transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    transport.connect((server_address, server_port))
-    while True:
-        # try:
-        send_msg(transport, write_msg(transport))
-        msg_from_server(get_msg(transport))
-
-        # except Exception:
-        #     CLIENT_LOGGER.error(f'Потеряна связь {server_address}'
-        #                         f' {server_port} ')
-        #     sys.exit(1)
+        # Mainloop , если один из потоков закрылся,
+        # значит сеанс связи закончен.
+        # Цикл завершается, если один из потоков завершён.
+        while True:
+            time.sleep(1)
+            if receiver.is_alive() and user_pip_boy.is_alive():
+                continue
+            break
 
 
 if __name__ == '__main__':
