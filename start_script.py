@@ -28,5 +28,5 @@ while True:
         )
     elif ACTION == 'exit':
         while LAUNCHES:
-            NO = LAUNCHES.pop()
-            NO.kill()
+            DONT = LAUNCHES.pop()
+            DONT.kill()
