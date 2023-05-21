@@ -21,7 +21,7 @@ from metacls import ClientVerifier
 CLIENT_LOGGER = logging.getLogger('client')
 
 
-class ClientSender(threading.Thread, metaclass=ClientVerifier):
+class ClientSend(threading.Thread, metaclass=ClientVerifier):
     def __init__(self, user_name, sock):
         self.user_name = user_name
         self.sock = sock
@@ -63,7 +63,7 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
 
 
 
-    def pip_boy_3000(self):
+    def run(self):
         """Функция для отправки команд пользователем"""
         self.help_me()
         while True:
@@ -91,14 +91,14 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
         print('help - помощь')
         print('exit - закончить сеанс связи')
 
-class ClientReader(threading.Thread , metaclass=ClientVerifier):
+class ClientRead(threading.Thread , metaclass=ClientVerifier):
     def __init__(self, user_name, sock):
         self.user_name = user_name
         self.sock = sock
         super().__init__()
 
 
-    def msg_from_server(self):
+    def run(self):
         """Для обработки сообщений с сервера"""
         while True:
             try:
@@ -216,14 +216,12 @@ def main():
         sys.exit(1)
     else:
         # Соединение с сервером установлено, принимаем сообщения
-        receiver = threading.Thread(target=msg_from_server,
-                                    args=(transport, client_name))
+        receiver = ClientRead(client_name, transport)
         receiver.daemon = True
         receiver.start()
 
         # Отправка сообщений через команды.
-        user_pip_boy = threading.Thread(target=pip_boy_3000,
-                                          args=(transport, client_name))
+        user_pip_boy = ClientSend(client_name, transport)
         user_pip_boy.daemon = True
         user_pip_boy.start()
         CLIENT_LOGGER.debug('Запущены демонические потоки')

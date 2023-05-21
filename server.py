@@ -11,6 +11,7 @@ from common_files.plugins import get_msg, send_msg
 import logging
 import log.server_log_config
 from log.log_decorator import log
+from metacls import ServerVerifier
 
 # Активация настроек логирования для сервера.
 SERVER_LOGGER = logging.getLogger('server_log')
