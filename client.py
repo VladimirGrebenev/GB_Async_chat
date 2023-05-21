@@ -15,100 +15,111 @@ from common_files.plugins import get_msg, send_msg
 from common_files.exceptions import WrongDataRecivedError, \
     RequiredFieldAbsent, ServerError
 from log.log_decorator import log
+from metacls import ClientVerifier
 
 # Инициализация клиентского логера
 CLIENT_LOGGER = logging.getLogger('client')
 
 
-@log
-def make_exit_msg(user_name):
-    """Для создания сообщения о выходе"""
-    return {
-        ACTION: EXIT,
-        TIME: time.time(),
-        user_name: user_name
-    }
+class ClientSender(threading.Thread, metaclass=ClientVerifier):
+    def __init__(self, user_name, sock):
+        self.user_name = user_name
+        self.sock = sock
+        super().__init__()
+
+    def make_exit_msg(self):
+        """Для создания сообщения о выходе"""
+        return {
+            ACTION: EXIT,
+            TIME: time.time(),
+            USER_NAME: self.user_name
+        }
 
 
-@log
-def msg_from_server(sock, my_username):
-    """Для обработки сообщений с сервера"""
-    while True:
+
+    def make_msg(self):
+        """
+        Функция для формирования сообщения для отправки на сервер
+        :param sock:
+        :param user_name:
+        :return:
+        """
+        to_recipient = input('Введите имя реципиента: ')
+        msg = input('Введите сообщение: ')
+        msg_dict = {
+            ACTION: MSG,
+            SENDER: self.user_name,
+            RECIPIENT: to_recipient,
+            TIME: time.time(),
+            MSG_TEXT: msg
+        }
+        CLIENT_LOGGER.debug(f'Словарь сообщения: {msg_dict}')
         try:
-            msg = get_msg(sock)
-            if ACTION in msg and msg[ACTION] == MSG and \
-                    SENDER in msg and RECIPIENT in msg \
-                    and MSG_TEXT in msg and \
-                    msg[RECIPIENT] == my_username:
-                print(f'\nОт пользователя {msg[SENDER]} получено'
-                      f' сообщение:'
-                      f'\n{msg[MSG_TEXT]}')
-                CLIENT_LOGGER.info(f'От клиента {msg[SENDER]} сообщение:'
-                                   f'\n{msg[MSG_TEXT]}')
+            send_msg(self.sock, msg_dict)
+            CLIENT_LOGGER.info(f'Ушло сообщение для реципиента {to_recipient}')
+        except:
+            CLIENT_LOGGER.critical('Соединение с сервером потеряно.')
+            sys.exit(1)
+
+
+
+    def pip_boy_3000(self):
+        """Функция для отправки команд пользователем"""
+        self.help_me()
+        while True:
+            command = input('Введите команду: ')
+            if command == 'msg':
+                self.make_msg()
+            elif command == 'help':
+                self.help_me()
+            elif command == 'exit':
+                send_msg(self.sock, self.make_exit_msg())
+                print('Конец связи. Связи конец.')
+                CLIENT_LOGGER.info('Пользователь завершил сеанс связи.')
+                # Нужна задержка для того, чтобы ушло сообщение о выходе
+                time.sleep(0.5)
+                break
             else:
-                CLIENT_LOGGER.error(f'Некорректное сообщение с сервера: {msg}')
-        except WrongDataRecivedError:
-            CLIENT_LOGGER.error(f'Декодировать сообщение не удалось.')
-        except (OSError, ConnectionError, ConnectionAbortedError,
-                ConnectionResetError, json.JSONDecodeError):
-            CLIENT_LOGGER.critical(f'Соединение с сервером потеряно.')
-            break
+                print('Не понял команду, попробуй ещё раз или help'
+                      ' - чтобы посмотреть команды.')
 
 
-@log
-def make_msg(sock, user_name='Guest'):
-    """
-    Функция для формирования сообщения для отправки на сервер
-    :param sock:
-    :param user_name:
-    :return:
-    """
-    to_recipient = input('Введите имя реципиента: ')
-    msg = input('Введите сообщение: ')
-    msg_dict = {
-        ACTION: MSG,
-        SENDER: user_name,
-        RECIPIENT: to_recipient,
-        TIME: time.time(),
-        MSG_TEXT: msg
-    }
-    CLIENT_LOGGER.debug(f'Словарь сообщения: {msg_dict}')
-    try:
-        send_msg(sock, msg_dict)
-        CLIENT_LOGGER.info(f'Ушло сообщение для реципиента {to_recipient}')
-    except:
-        CLIENT_LOGGER.critical('Соединение с сервером потеряно.')
-        sys.exit(1)
+    def help_me(self):
+        """Функция помощь с командами """
+        print('Команды для ввода:')
+        print('msg - отправить сообщение')
+        print('help - помощь')
+        print('exit - закончить сеанс связи')
+
+class ClientReader(threading.Thread , metaclass=ClientVerifier):
+    def __init__(self, user_name, sock):
+        self.user_name = user_name
+        self.sock = sock
+        super().__init__()
 
 
-@log
-def pip_boy_3000(sock, user_name):
-    """Функция для отправки команд пользователем"""
-    help_me()
-    while True:
-        command = input('Введите команду: ')
-        if command == 'msg':
-            make_msg(sock, user_name)
-        elif command == 'help':
-            help_me()
-        elif command == 'exit':
-            send_msg(sock, make_exit_msg(user_name))
-            print('Конец связи. Связи конец.')
-            CLIENT_LOGGER.info('Пользователь завершил сеанс связи.')
-            # Нужна задержка для того, чтобы ушло сообщение о выходе
-            time.sleep(0.5)
-            break
-        else:
-            print('Не понял команду, попробуй ещё раз или help'
-                  ' - чтобы посмотреть команды.')
-
-
-def help_me():
-    """Функция помощь с командами """
-    print('Команды для ввода:')
-    print('msg - отправить сообщение')
-    print('help - помощь')
-    print('exit - закончить сеанс связи')
+    def msg_from_server(self):
+        """Для обработки сообщений с сервера"""
+        while True:
+            try:
+                msg = get_msg(self.sock)
+                if ACTION in msg and msg[ACTION] == MSG and \
+                        SENDER in msg and RECIPIENT in msg \
+                        and MSG_TEXT in msg and \
+                        msg[RECIPIENT] == self.user_name:
+                    print(f'\nОт пользователя {msg[SENDER]} получено'
+                          f' сообщение:'
+                          f'\n{msg[MSG_TEXT]}')
+                    CLIENT_LOGGER.info(f'От клиента {msg[SENDER]} сообщение:'
+                                       f'\n{msg[MSG_TEXT]}')
+                else:
+                    CLIENT_LOGGER.error(f'Некорректное сообщение с сервера: {msg}')
+            except WrongDataRecivedError:
+                CLIENT_LOGGER.error(f'Декодировать сообщение не удалось.')
+            except (OSError, ConnectionError, ConnectionAbortedError,
+                    ConnectionResetError, json.JSONDecodeError):
+                CLIENT_LOGGER.critical(f'Соединение с сервером потеряно.')
+                break
 
 
 @log
