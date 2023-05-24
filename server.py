@@ -5,11 +5,13 @@ import sys
 import argparse
 import select
 from common_files.settings import *
-from common_files.plugins import get_msg, send_msg
+from common_files.plugins import *
 import logging
+import threading
 import log.server_log_config
 from log.log_decorator import log
 from metacls import ServerVerifier
+from chat_database import ChatStorage
 
 # Активация настроек логирования для сервера.
 SERVER_LOGGER = logging.getLogger('server_log')
@@ -48,12 +50,13 @@ class Port:
         self.name = name
 
 
-class Server(metaclass=ServerVerifier):
+class Server(threading.Thread, metaclass=ServerVerifier):
     port = Port()
 
-    def __init__(self, listen_address, listen_port):
+    def __init__(self, listen_address, listen_port, database):
         self.addr = listen_address
         self.port = listen_port
+        self.database = database
         self.clients = []
         self.msgs = []
         self.users_names = dict()
@@ -165,6 +168,9 @@ class Server(metaclass=ServerVerifier):
             # соединение.
             if msg[USER][USER_NAME] not in self.users_names.keys():
                 self.users_names[msg[USER][USER_NAME]] = client
+                client_ip, client_port = client.getpeername()
+                self.database.user_login(msg[USER][USER_NAME],
+                                         client_ip, client_port)
                 send_msg(client, RESPONSE_200)
             else:
                 response = RESPONSE_400
@@ -182,6 +188,7 @@ class Server(metaclass=ServerVerifier):
             return
         # Если клиент выбрал команду exit
         elif ACTION in msg and msg[ACTION] == EXIT and USER_NAME in msg:
+            self.database.user_logout(msg[USER_NAME])
             self.clients.remove(self.users_names[USER_NAME])
             self.users_names[USER_NAME].close()
             del self.users_names[USER_NAME]
@@ -193,6 +200,14 @@ class Server(metaclass=ServerVerifier):
             send_msg(client, response)
             return
 
+def help_me(self):
+    """Функция помощь с командами """
+    print('Команды для ввода:')
+    print('users - список юзеров')
+    print('connected - список активных юзеров')
+    print('loghist - история активности')
+    print('exit - завершить работу сервера')
+    print('help - вывод справки по поддерживаемым командам')
 
 def main():
     """
@@ -201,9 +216,42 @@ def main():
     """
     listen_address, listen_port = analyze_args()
 
+    # Инициализируем базу чата
+    database = ChatStorage()
+
     # Создаём экземпляр класса Server.
-    server = Server(listen_address, listen_port)
-    server.main_loop()
+    server = Server(listen_address, listen_port, database)
+    server.daemon = True
+    server.start()
+
+    # Вывод доступных команд:
+    help_me()
+
+    # Основной цикл сервера:
+    while True:
+        command = input('Введите комманду: ')
+        if command == 'help':
+            help_me()
+        elif command == 'exit':
+            break
+        elif command == 'users':
+            for user in sorted(database.users_list()):
+                print(f'Юзер {user[0]}, последний вход: {user[1]}')
+        elif command == 'connected':
+            for user in sorted(database.active_users_list()):
+                print(
+                    f'Юзер {user[0]}, подключен: {user[1]}:'
+                    f'{user[2]}, время установки соединения: {user[3]}')
+        elif command == 'loghist':
+            name = input(
+                'Введите имя пользователя для просмотра истории. Для вывода '
+                'всей истории, просто нажмите Enter: ')
+            for user in sorted(database.login_history(name)):
+                print(
+                    f'Юзер: {user[0]} время входа: {user[1]}. Вход '
+                    f'с: {user[2]}:{user[3]}')
+        else:
+            print('Такой команды нет. help - для справки')
 
 
 if __name__ == '__main__':
