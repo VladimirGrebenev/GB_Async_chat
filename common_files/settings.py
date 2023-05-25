@@ -32,6 +32,11 @@ ERROR = 'error'
 MSG = 'msg'
 MSG_TEXT = 'msg_text'
 EXIT = 'exit'
+TAKE_CONTACTS = 'get_contacts'
+CONTACTS_INFO = 'data_list'
+ADD_CONTACT = 'add'
+TAKE_USERS = 'get_users'
+DELETE_CONTACT = 'remove'
 
 # ответ сервера 200
 RESPONSE_200 = {RESPONSE: 200}
