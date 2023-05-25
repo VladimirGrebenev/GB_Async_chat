@@ -14,6 +14,8 @@ MAX_PACKAGE_LENGTH = 1024
 ENCODING = 'utf-8'
 # Уровень логирования
 LOG_LEVEL = logging.DEBUG
+# База данных чата:
+SERVER_DATABASE = 'sqlite:///server_base.db3'
 
 # Протокол JIM основные ключи:
 ACTION = 'action'
