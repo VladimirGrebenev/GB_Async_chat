@@ -31,12 +31,27 @@ class ChatStorage:
             self.ip = ip
             self.port = port
 
-    def __init__(self):
+    # Класс контактов пользователей
+    class UsersContacts:
+        def __init__(self, user, contact):
+            self.id = None
+            self.user = user
+            self.contact = contact
+
+    # Класс отображение таблицы истории действий
+    class UsersHistory:
+        def __init__(self, user):
+            self.id = None
+            self.user = user
+            self.sent = 0
+            self.accepted = 0
+
+    def __init__(self, path):
         # Инициируем базу данных
-        # echo=False - отключаем ведение лога (вывод sql-запросов)
-        # pool_recycle - По умолчанию соединение с БД через 8 часов простоя обрывается.
-        # Чтобы это не случилось нужно добавить опцию pool_recycle = 7200 (переуст-ка соед-я через 2 часа)
-        self.database_engine = create_engine(SERVER_DATABASE, echo=False, pool_recycle=7200)
+        self.database_engine = create_engine(f'sqlite:///{path}', echo=False,
+                                             pool_recycle=7200,
+                                             connect_args={
+                                                 'check_same_thread': False})
 
         # Создаём объект MetaData
         self.metadata = MetaData()
@@ -51,7 +66,8 @@ class ChatStorage:
         # Создаём таблицу активных юзеров
         active_users_table = Table('Active_users', self.metadata,
                                    Column('id', Integer, primary_key=True),
-                                   Column('user', ForeignKey('Users.id'), unique=True),
+                                   Column('user', ForeignKey('Users.id'),
+                                          unique=True),
                                    Column('ip_address', String),
                                    Column('port', Integer),
                                    Column('login_time', DateTime)
@@ -66,6 +82,21 @@ class ChatStorage:
                                    Column('port', String)
                                    )
 
+        # Создаём таблицу контактов пользователей
+        contacts = Table('Contacts', self.metadata,
+                         Column('id', Integer, primary_key=True),
+                         Column('user', ForeignKey('Users.id')),
+                         Column('contact', ForeignKey('Users.id'))
+                         )
+
+        # Создаём таблицу истории пользователей
+        users_history_table = Table('History', self.metadata,
+                                    Column('id', Integer, primary_key=True),
+                                    Column('user', ForeignKey('Users.id')),
+                                    Column('sent', Integer),
+                                    Column('accepted', Integer)
+                                    )
+
         # Создаём таблицы
         self.metadata.create_all(self.database_engine)
 
@@ -74,6 +105,8 @@ class ChatStorage:
         mapper(self.AllUsers, users_table)
         mapper(self.ActiveUsers, active_users_table)
         mapper(self.LoginHistory, user_login_history)
+        mapper(self.UsersContacts, contacts)
+        mapper(self.UsersHistory, users_history_table)
 
         # Создаём сессию
         Session = sessionmaker(bind=self.database_engine)
@@ -87,7 +120,6 @@ class ChatStorage:
 
     # Функция выполняющяяся при входе юзера, записывает в базу факт входа
     def user_login(self, username, ip_address, port):
-        print(username, ip_address, port)
         # Запрос в таблицу юзеров на наличие там юзера с таким именем
         rez = self.session.query(self.AllUsers).filter_by(name=username)
         #print(type(rez))
@@ -104,6 +136,8 @@ class ChatStorage:
             self.session.add(user)
             # Коммитим, чтобы присвоился ID
             self.session.commit()
+            user_in_history = self.UsersHistory(user.id)
+            self.session.add(user_in_history)
 
         # Теперь можно создать запись в таблицу активных юзеров о факте входа.
         # Создаем экземпляр класса self.ActiveUsers, через который передаем
@@ -132,6 +166,60 @@ class ChatStorage:
         self.session.query(self.ActiveUsers).filter_by(user=user.id).delete()
 
         # Коммитим
+        self.session.commit()
+
+    # Функция фиксирует передачу сообщения и делает соответствующие отметки в БД
+    def process_msg(self, sender, recipient):
+        # Получаем ID отправителя и получателя
+        sender = self.session.query(self.AllUsers).filter_by(
+            name=sender).first().id
+        recipient = self.session.query(self.AllUsers).filter_by(
+            name=recipient).first().id
+        # Запрашиваем строки из истории и увеличиваем счётчики
+        sender_row = self.session.query(self.UsersHistory).filter_by(
+            user=sender).first()
+        sender_row.sent += 1
+        recipient_row = self.session.query(self.UsersHistory).filter_by(
+            user=recipient).first()
+        recipient_row.accepted += 1
+
+        self.session.commit()
+
+    # Функция добавляет контакт для пользователя.
+    def add_contact(self, user, contact):
+        # Получаем ID пользователей
+        user = self.session.query(self.AllUsers).filter_by(
+            name=user).first()
+        contact = self.session.query(self.AllUsers).filter_by(
+            name=contact).first()
+
+        # Проверяем что не дубль и что контакт может существовать (полю пользователь мы доверяем)
+        if not contact or self.session.query(self.UsersContacts).filter_by(
+                user=user.id, contact=contact.id).count():
+            return
+
+        # Создаём объект и заносим его в базу
+        contact_row = self.UsersContacts(user.id, contact.id)
+        self.session.add(contact_row)
+        self.session.commit()
+
+    # Функция удаляет контакт из базы данных
+    def remove_contact(self, user, contact):
+        # Получаем ID пользователей
+        user = self.session.query(self.AllUsers).filter_by(
+            name=user).first()
+        contact = self.session.query(self.AllUsers).filter_by(
+            name=contact).first()
+
+        # Проверяем что контакт может существовать (полю пользователь мы доверяем)
+        if not contact:
+            return
+
+        # Удаляем требуемое
+        self.session.query(self.UsersContacts).filter(
+            self.UsersContacts.user == user.id,
+            self.UsersContacts.contact == contact.id
+        ).delete()
         self.session.commit()
 
     # Функция возвращает список известных юзеров со временем последнего входа.
@@ -169,20 +257,43 @@ class ChatStorage:
             query = query.filter(self.AllUsers.name == username)
         return query.all()
 
+    def get_contacts(self, username):
+        # Запрашивааем указанного пользователя
+        user = self.session.query(self.AllUsers).filter_by(name=username).one()
+
+        # Запрашиваем его список контактов
+        query = self.session.query(
+            self.UsersContacts,
+            self.AllUsers.name).filter_by(user=user.id).join(self.AllUsers,
+                                                             self.UsersContacts.contact == self.AllUsers.id)
+
+        # выбираем только имена пользователей и возвращаем их.
+        return [contact[1] for contact in query.all()]
+
+    # Функция возвращает количество переданных и полученных сообщений
+    def message_history(self):
+        query = self.session.query(
+            self.AllUsers.name,
+            self.AllUsers.last_login,
+            self.UsersHistory.sent,
+            self.UsersHistory.accepted
+        ).join(self.AllUsers)
+        # Возвращаем список кортежей
+        return query.all()
+
 
 # Отладка
 if __name__ == '__main__':
-    test_db = ChatStorage()
-    # выполняем 'подключение' юзера
-    test_db.user_login('client_1', '192.168.1.4', 8888)
-    test_db.user_login('client_2', '192.168.1.5', 7777)
-    # выводим список кортежей - активных юзеров
-    print(test_db.active_users_list())
-    # выполянем 'отключение' юзера
-    test_db.user_logout('client_1')
-    # выводим список активных юзеров
-    print(test_db.active_users_list())
-    # запрашиваем историю входов по юзеру
-    test_db.login_history('client_1')
-    # выводим список известных юзеров
+    test_db = ChatStorage(path='server_base.db3')
+    test_db.user_login('1111', '192.168.1.113', 8080)
+    test_db.user_login('McG2', '192.168.1.113', 8081)
     print(test_db.users_list())
+    # print(test_db.active_users_list())
+    # test_db.user_logout('McG')
+    # print(test_db.login_history('re'))
+    # test_db.add_contact('test2', 'test1')
+    # test_db.add_contact('test1', 'test3')
+    # test_db.add_contact('test1', 'test6')
+    # test_db.remove_contact('test1', 'test3')
+    test_db.process_msg('McG2', '1111')
+    print(test_db.message_history())

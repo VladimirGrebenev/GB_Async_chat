@@ -1,6 +1,10 @@
 from sqlalchemy import create_engine, Table, Column, Integer, String, Text, \
     MetaData, DateTime
 from sqlalchemy.orm import mapper, sessionmaker
+import os
+import sys
+
+sys.path.append('../')
 from common_files.settings import *
 import datetime
 
@@ -30,10 +34,12 @@ class ClientDatabase:
 
     # Конструктор класса базы
     def __init__(self, name):
-        self.database_engine = create_engine(f'sqlite:///client_{name}.db3',
-                                             echo=False, pool_recycle=7200,
-                                             connect_args={
-                                                 'check_same_thread': False})
+        path = os.path.dirname(os.path.realpath(__file__))
+        filename = f'client_{name}.db3'
+        self.database_engine = create_engine(
+            f'sqlite:///{os.path.join(path, filename)}.db3',
+            echo=False, pool_recycle=7200, connect_args={
+                'check_same_thread': False})
 
         # Создаём объект MetaData
         self.metadata = MetaData()
@@ -78,7 +84,8 @@ class ClientDatabase:
 
     # Функция для добавления контакта
     def add_contact(self, contact):
-        if not self.session.query(self.Contacts).filter_by(name=contact).count():
+        if not self.session.query(self.Contacts).filter_by(
+                name=contact).count():
             contact_row = self.Contacts(contact)
             self.session.add(contact_row)
             self.session.commit()
@@ -113,7 +120,8 @@ class ClientDatabase:
 
     # Функция для проверки наличия юзера
     def check_user(self, user):
-        if self.session.query(self.FamiliarUsers).filter_by(username=user).count():
+        if self.session.query(self.FamiliarUsers).filter_by(
+                username=user).count():
             return True
         else:
             return False
@@ -126,13 +134,11 @@ class ClientDatabase:
             return False
 
     # Функция для получения истории сообщений
-    def get_history(self, from_sender=None, to_recipient=None):
-        query = self.session.query(self.MsgHistory)
-        if from_sender:
-            query = query.filter_by(from_sender=from_sender)
-        if to_recipient:
-            query = query.filter_by(to_recipient=to_recipient)
-        return [(history_row.from_sender, history_row.to_recipient, history_row.msg, history_row.date)
+    def get_history(self, from_sender):
+        query = self.session.query(self.MsgHistory).filter_by(
+            from_sender=from_sender)
+        return [(history_row.from_sender, history_row.to_recipient,
+                 history_row.msg, history_row.date)
                 for history_row in query.all()]
 
 
@@ -141,16 +147,14 @@ if __name__ == '__main__':
     test_db = ClientDatabase('test1')
     for i in ['test3', 'test4', 'test5']:
         test_db.add_contact(i)
-    test_db.add_contact('test4')
-    test_db.add_users(['test1', 'test2', 'test3', 'test4', 'test5'])
-    test_db.save_msg('test1', 'test2', f'Привет! я тестовое сообщение от {datetime.datetime.now()}!')
-    test_db.save_msg('test2', 'test1', f'Привет! я другое тестовое сообщение от {datetime.datetime.now()}!')
-    print(test_db.get_contacts())
-    print(test_db.get_familiar_users())
-    print(test_db.check_user('test1'))
-    print(test_db.check_user('test10'))
-    print(test_db.get_history('test2'))
-    print(test_db.get_history(to_recipient='test2'))
-    print(test_db.get_history('test3'))
+    # test_db.add_contact('test4')
+    # test_db.add_users(['test1', 'test2', 'test3', 'test4', 'test5'])
+    # test_db.save_msg('test2', 'in', f'Привет! я тестовое сообщение от {datetime.datetime.now()}!')
+    # test_db.save_msg('test2', 'out', f'Привет! я другое тестовое сообщение от {datetime.datetime.now()}!')
+    # print(test_db.get_contacts())
+    # print(test_db.get_familiar_users())
+    # print(test_db.check_user('test1'))
+    # print(test_db.check_user('test10'))
+    # print(sorted(test_db.get_history('test2') , key=lambda item: item[3]))
     test_db.del_contact('test4')
     print(test_db.get_contacts())
