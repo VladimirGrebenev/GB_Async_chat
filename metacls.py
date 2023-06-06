@@ -22,7 +22,7 @@ class ClientVerifier(type):
                 raise TypeError(f'Использование {command} метода запрещено в'
                                 f' классе')
 
-        if 'get_message' in methods_list or 'send_message' in methods_list:
+        if 'get_msg' in methods_list or 'send_msg' in methods_list:
             pass
         else:
             raise TypeError('Функций, работающих с сокетами, не обнаружено')

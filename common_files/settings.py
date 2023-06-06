@@ -15,7 +15,7 @@ ENCODING = 'utf-8'
 # Уровень логирования
 LOG_LEVEL = logging.DEBUG
 # База данных чата:
-SERVER_DATABASE = 'sqlite:///server_base.db3'
+SERVER_DATABASE = 'server.ini'
 
 # Протокол JIM основные ключи:
 ACTION = 'action'
@@ -40,6 +40,8 @@ DELETE_CONTACT = 'remove'
 
 # ответ сервера 200
 RESPONSE_200 = {RESPONSE: 200}
+# ответ сервера 202
+RESPONSE_202 = {RESPONSE: 202, CONTACTS_INFO: None}
 # ответ сервера 400
 RESPONSE_400 = {
     RESPONSE: 400,

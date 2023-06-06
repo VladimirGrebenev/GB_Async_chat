@@ -2,8 +2,7 @@
 
 import json
 import sys
-from .settings import MAX_PACKAGE_LENGTH, ENCODING
-from common_files.exceptions import WrongDataRecivedError, NotDictError
+from .settings import *
 from log.log_decorator import log
 sys.path.append('../')
 
@@ -17,15 +16,12 @@ def get_msg(client):
     """
 
     encoded_response = client.recv(MAX_PACKAGE_LENGTH)
-    if isinstance(encoded_response, bytes):
-        json_response = encoded_response.decode(ENCODING)
-        response = json.loads(json_response)
-        if isinstance(response, dict):
-            return response
-        else:
-            raise WrongDataRecivedError
+    json_response = encoded_response.decode(ENCODING)
+    response = json.loads(json_response)
+    if isinstance(response, dict):
+        return response
     else:
-        raise WrongDataRecivedError
+        raise TypeError
 
 
 @log
@@ -37,8 +33,6 @@ def send_msg(sock, message):
     :param message:
     :return:
     """
-    if not isinstance(message, dict):
-        raise NotDictError
     js_message = json.dumps(message)
     encoded_message = js_message.encode(ENCODING)
     sock.send(encoded_message)
